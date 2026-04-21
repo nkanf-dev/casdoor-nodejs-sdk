@@ -80,3 +80,21 @@ const { data: users } = await sdk.getUsers()
 const token = await sdk.getAuthToken('<callback-code>')
 const user = sdk.parseJwtToken(token)
 ```
+
+## Trusted quick login companion
+
+```typescript
+import { SDK, createNodeCompanion } from "casdoor-nodejs-sdk"
+
+const sdk = new SDK(authCfg)
+const companion = createNodeCompanion({
+  baseDir: "/existing/app/path",
+  serverUrl: "http://localhost:8000",
+  clientId: "your-client-id",
+  sdk,
+})
+
+await companion.setAccessToken(currentAccessToken)
+```
+
+Use `setSession()` instead if you want to provide `userName`, `displayName`, and `avatar` yourself.

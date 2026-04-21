@@ -679,3 +679,60 @@ export class SDK {
     return this.urlSDK.getMyProfileUrl(accessToken)
   }
 }
+
+export { createEncryptedFileStores } from './companion/nodeFileStore'
+export type { CompanionFilePaths } from './companion/nodeFileStore'
+export {
+  createNodeCompanion,
+  enableNodeCompanion,
+  createElectronCompanion,
+  enableElectronCompanion,
+  createElectronMainCompanion,
+  enableElectronMainCompanion,
+  resolveNodeCompanionPaths,
+} from './companion/bootstrap'
+export type {
+  CompanionPathOptions,
+  CreateNodeCompanionOptions,
+  CreateElectronMainCompanionOptions,
+} from './companion/bootstrap'
+export { SessionCompanion } from './companion/sessionCompanion'
+export type {
+  CompanionSession,
+  SessionCompanionRuntime,
+  SessionCompanionOptions,
+} from './companion/sessionCompanion'
+export { CompanionClient } from './companion/client'
+export type { CompanionClientOptions } from './companion/client'
+export { NodeCompanion } from './companion/nodeCompanion'
+export type { NodeCompanionOptions } from './companion/nodeCompanion'
+export type {
+  BindingStore,
+  KeyStore,
+  TrustedBindingRecord,
+} from './companion/store'
+export type {
+  CompanionAdapter,
+  DiscoveryHandler,
+  DiscoveryIdentity,
+  TrustedBinding,
+} from './companion/types'
+export {
+  ElectronCompanionAdapter,
+  defaultElectronCompanionBridgeKey,
+  getElectronCompanionBridge,
+} from './adapters/electron/renderer'
+export type { ElectronCompanionBridge } from './adapters/electron/renderer'
+export { exposeElectronCompanionBridge } from './adapters/electron/preload'
+export type { ContextBridgeLike } from './adapters/electron/preload'
+export {
+  createElectronCompanionBridge,
+  createElectronCompanionStores,
+  createMemoryBindingStore,
+  createMemoryKeyStore,
+  resolveCompanionPaths,
+} from './adapters/electron/main'
+export type {
+  ElectronBindingStore,
+  ElectronCompanionPathOptions,
+} from './adapters/electron/main'
