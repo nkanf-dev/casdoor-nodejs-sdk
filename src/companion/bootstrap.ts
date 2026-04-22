@@ -16,7 +16,10 @@ export interface CompanionPathOptions {
 }
 
 export type CreateNodeCompanionOptions = CompanionPathOptions &
-  Omit<NodeCompanionOptions, 'bindingStore' | 'keyStore'> &
+  Omit<
+    NodeCompanionOptions,
+    'bindingStore' | 'keyStore' | 'getCurrentIdentity' | 'accessToken'
+  > &
   Pick<SessionCompanionOptions, 'sdk'>
 
 export type CreateElectronMainCompanionOptions = CreateNodeCompanionOptions

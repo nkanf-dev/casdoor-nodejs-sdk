@@ -1,7 +1,7 @@
 import * as http from 'http'
 import * as os from 'os'
 import { CompanionManager } from './CompanionManager'
-import { CompanionClient } from './client'
+import { CompanionClient, CompanionFetch } from './client'
 import { BindingStore, KeyStore } from './store'
 import { CompanionAdapter, DiscoveryHandler } from './types'
 
@@ -20,14 +20,20 @@ export interface NodeCompanionOptions {
   deviceName?: string
   port?: number
   allowedOrigins?: string[]
-  fetchImpl?: typeof fetch
+  fetchImpl?: CompanionFetch
 }
+
+const maxDiscoveryBodyBytes = 4096
 
 function readJsonBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
     let rawBody = ''
     req.on('data', (chunk) => {
       rawBody += chunk.toString('utf8')
+      if (Buffer.byteLength(rawBody, 'utf8') > maxDiscoveryBodyBytes) {
+        reject(new Error('request body too large'))
+        req.destroy()
+      }
     })
     req.on('end', () => {
       if (rawBody === '') {
@@ -138,17 +144,15 @@ export class NodeCompanion {
     this.server = http.createServer(async (req, res) => {
       try {
         const origin = req.headers.origin
-        if (origin) {
-          if (!this.allowedOrigins.has(origin)) {
-            writeJson(res, 403, {
-              available: false,
-              msg: 'origin not allowed',
-            })
-            return
-          }
-
-          setCorsHeaders(origin, res)
+        if (!origin || !this.allowedOrigins.has(origin)) {
+          writeJson(res, 403, {
+            available: false,
+            msg: 'origin not allowed',
+          })
+          return
         }
+
+        setCorsHeaders(origin, res)
 
         if (req.method === 'OPTIONS') {
           res.statusCode = 204

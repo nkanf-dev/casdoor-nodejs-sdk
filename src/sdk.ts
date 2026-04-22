@@ -696,14 +696,27 @@ export type {
   CreateNodeCompanionOptions,
   CreateElectronMainCompanionOptions,
 } from './companion/bootstrap'
-export { SessionCompanion } from './companion/sessionCompanion'
+export {
+  SessionCompanion,
+  PersistedCompanionSession,
+  companionSessionFromUserInfo,
+  createPersistedCompanionSession,
+} from './companion/sessionCompanion'
 export type {
+  CompanionSessionStore,
   CompanionSession,
+  CompanionUserInfo,
+  PersistedCompanionSessionRuntime,
   SessionCompanionRuntime,
   SessionCompanionOptions,
+  PersistedCompanionSessionOptions,
 } from './companion/sessionCompanion'
 export { CompanionClient } from './companion/client'
-export type { CompanionClientOptions } from './companion/client'
+export type {
+  CompanionClientOptions,
+  CompanionFetch,
+  CompanionFetchResponse,
+} from './companion/client'
 export { NodeCompanion } from './companion/nodeCompanion'
 export type { NodeCompanionOptions } from './companion/nodeCompanion'
 export type {

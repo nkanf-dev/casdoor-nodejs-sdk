@@ -98,3 +98,29 @@ await companion.setAccessToken(currentAccessToken)
 ```
 
 Use `setSession()` instead if you want to provide `userName`, `displayName`, and `avatar` yourself.
+
+For apps that already persist the Casdoor user info locally, use
+`createPersistedCompanionSession()` to restore quick login when the app starts
+and clear it on sign-out:
+
+```typescript
+import {
+  createElectronCompanion,
+  createPersistedCompanionSession,
+} from "casdoor-nodejs-sdk"
+
+const companion = createElectronCompanion({
+  baseDir: app.getPath("userData"),
+  serverUrl: "http://localhost:8000",
+  clientId: "your-client-id",
+})
+
+const companionSession = createPersistedCompanionSession({
+  companion,
+  store,
+})
+
+await companionSession.restore()
+await companionSession.setUserInfo(userInfo)
+await companionSession.clear()
+```

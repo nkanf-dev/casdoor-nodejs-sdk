@@ -2,12 +2,44 @@ import { CompanionFilePaths, createEncryptedFileStores } from './nodeFileStore'
 import { NodeCompanion } from './nodeCompanion'
 import { BindingStore, KeyStore } from './store'
 import type { SDK } from '../sdk'
+import { CompanionFetch } from './client'
 
 export interface CompanionSession {
   accessToken: string
   userName: string
   displayName?: string
   avatar?: string
+}
+
+export interface CompanionUserInfo {
+  accessToken?: string
+  name?: string
+  preferred_username?: string
+  displayName?: string
+  display_name?: string
+  avatar?: string
+  picture?: string
+}
+
+export interface CompanionSessionStore {
+  get(key: string): any
+  set(key: string, value: any): void
+  delete(key: string): void
+}
+
+export interface PersistedCompanionSessionRuntime {
+  setSession(session: CompanionSession): Promise<void>
+  setUserInfo(userInfo: CompanionUserInfo): Promise<void>
+  clearSession(): Promise<void>
+  close(): Promise<void>
+}
+
+export interface PersistedCompanionSessionOptions {
+  companion: PersistedCompanionSessionRuntime
+  store: CompanionSessionStore
+  userInfoKey?: string
+  accessTokenKey?: string
+  codeKey?: string
 }
 
 export interface SessionCompanionOptions {
@@ -20,12 +52,13 @@ export interface SessionCompanionOptions {
   deviceName?: string
   port?: number
   allowedOrigins?: string[]
-  fetchImpl?: typeof fetch
+  fetchImpl?: CompanionFetch
 }
 
 export interface SessionCompanionRuntime {
   setSession(session: CompanionSession): Promise<void>
   setAccessToken(accessToken: string): Promise<void>
+  setUserInfo(userInfo: CompanionUserInfo): Promise<void>
   clearSession(): Promise<void>
   close(): Promise<void>
 }
@@ -77,6 +110,11 @@ export class SessionCompanion implements SessionCompanionRuntime {
     }
   }
 
+  public async setUserInfo(userInfo: CompanionUserInfo): Promise<void> {
+    const session = companionSessionFromUserInfo(userInfo)
+    await this.setSession(session)
+  }
+
   public async setAccessToken(accessToken: string): Promise<void> {
     if (!this.options.sdk) {
       throw new Error(
@@ -126,6 +164,77 @@ export class SessionCompanion implements SessionCompanionRuntime {
   }
 }
 
+export class PersistedCompanionSession {
+  private readonly userInfoKey: string
+  private readonly accessTokenKey: string
+  private readonly codeKey: string
+
+  constructor(private readonly options: PersistedCompanionSessionOptions) {
+    this.userInfoKey = options.userInfoKey || 'userInfo'
+    this.accessTokenKey = options.accessTokenKey || 'casdoor_access_token'
+    this.codeKey = options.codeKey || 'casdoor_code'
+  }
+
+  public async restore(): Promise<void> {
+    const userInfo = this.options.store.get(this.userInfoKey) as
+      | CompanionUserInfo
+      | undefined
+    const accessToken = this.options.store.get(this.accessTokenKey) as
+      | string
+      | undefined
+    if (!userInfo || !accessToken) {
+      return
+    }
+
+    await this.options.companion.setUserInfo({
+      ...userInfo,
+      accessToken,
+    })
+  }
+
+  public async setUserInfo(userInfo: CompanionUserInfo): Promise<void> {
+    const session = companionSessionFromUserInfo(userInfo)
+    this.options.store.set(this.userInfoKey, userInfo)
+    this.options.store.set(this.accessTokenKey, session.accessToken)
+    await this.options.companion.setSession(session)
+  }
+
+  public async clear(): Promise<void> {
+    await this.options.companion.clearSession()
+    this.options.store.delete(this.accessTokenKey)
+    this.options.store.delete(this.userInfoKey)
+    this.options.store.delete(this.codeKey)
+  }
+
+  public async close(): Promise<void> {
+    await this.options.companion.close()
+  }
+}
+
+export function companionSessionFromUserInfo(
+  userInfo: CompanionUserInfo,
+): CompanionSession {
+  if (!userInfo.accessToken) {
+    throw new Error('companion userInfo.accessToken is required')
+  }
+
+  const userName = userInfo.preferred_username || userInfo.name
+  if (!userName) {
+    throw new Error('companion userInfo name is required')
+  }
+
+  return {
+    accessToken: userInfo.accessToken,
+    userName,
+    displayName:
+      userInfo.displayName ||
+      userInfo.display_name ||
+      userInfo.name ||
+      userInfo.preferred_username,
+    avatar: userInfo.avatar || userInfo.picture || '',
+  }
+}
+
 export function createSessionCompanionFromPaths(
   paths: CompanionFilePaths,
   options: Omit<SessionCompanionOptions, 'bindingStore' | 'keyStore'>,
@@ -136,4 +245,10 @@ export function createSessionCompanionFromPaths(
     bindingStore,
     keyStore,
   })
+}
+
+export function createPersistedCompanionSession(
+  options: PersistedCompanionSessionOptions,
+): PersistedCompanionSession {
+  return new PersistedCompanionSession(options)
 }
