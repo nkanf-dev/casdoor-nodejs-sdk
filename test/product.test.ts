@@ -39,6 +39,7 @@ test('TestProduct', async () => {
     image: 'https://cdn.casbin.org/img/casdoor-logo_1185x256.png',
     description: 'Casdoor Website',
     tag: 'auto_created_product_for_plan',
+    currency: 'CNY',
     quantity: 999,
     sold: 0,
     state: 'Published',

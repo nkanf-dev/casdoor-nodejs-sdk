@@ -37,6 +37,7 @@ test('TestPlan', async () => {
     createdTime: new Date().toISOString(),
     displayName: name,
     description: 'casbin',
+    currency: 'CNY',
   }
 
   const { data: addResponse } = await sdk.addPlan(plan)
