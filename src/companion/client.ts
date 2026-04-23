@@ -68,7 +68,7 @@ export class CompanionClient {
     deviceId: string
     deviceName: string
     publicKey: string
-    keyAlgorithm: string
+    keyAlgorithm: 'Ed25519'
   }): Promise<{ status?: string; bindingId?: string; msg?: string }> {
     const params = new URLSearchParams({
       clientId: input.clientId,

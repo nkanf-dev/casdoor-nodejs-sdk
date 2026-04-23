@@ -41,10 +41,27 @@ async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
   })
 }
 
+function decodeSecretFile(secretFile: string, encoded: string): Buffer {
+  const normalized = encoded.trim()
+  const secret = Buffer.from(normalized, 'base64')
+
+  if (
+    normalized === '' ||
+    secret.length !== 32 ||
+    secret.toString('base64') !== normalized
+  ) {
+    throw new Error(
+      `invalid companion secret file "${secretFile}": expected a base64-encoded 32-byte key`,
+    )
+  }
+
+  return secret
+}
+
 async function readOrCreateSecret(secretFile: string): Promise<Buffer> {
   try {
     const encoded = await fs.readFile(secretFile, 'utf8')
-    return Buffer.from(encoded, 'base64')
+    return decodeSecretFile(secretFile, encoded)
   } catch (error: any) {
     if (error?.code !== 'ENOENT') {
       throw error
@@ -96,6 +113,17 @@ function decryptPrivateKey(payload: string, secret: Buffer): string {
   return decrypted.toString('utf8')
 }
 
+function isRecoverableKeyStoreError(error: any): boolean {
+  return (
+    error instanceof SyntaxError ||
+    error?.code === 'ERR_OSSL_BAD_DECRYPT' ||
+    error?.code === 'ERR_OSSL_EVP_BAD_DECRYPT' ||
+    error?.code === 'ERR_CRYPTO_INVALID_AUTH_TAG' ||
+    error?.message?.includes('unable to authenticate data') ||
+    error?.message?.startsWith('invalid companion secret file')
+  )
+}
+
 export function createEncryptedFileStores(paths: CompanionFilePaths): {
   bindingStore: BindingStore
   keyStore: KeyStore
@@ -117,9 +145,9 @@ export function createEncryptedFileStores(paths: CompanionFilePaths): {
       publicKey: string
       keyAlgorithm: 'Ed25519'
     }> {
-      const secret = await readOrCreateSecret(paths.secretFile)
-
+      let secret: Buffer
       try {
+        secret = await readOrCreateSecret(paths.secretFile)
         const encryptedPayload = await fs.readFile(paths.keyFile, 'utf8')
         const privateKeyPem = decryptPrivateKey(encryptedPayload, secret)
         const publicKey = createPublicKey(createPrivateKey(privateKeyPem))
@@ -132,8 +160,15 @@ export function createEncryptedFileStores(paths: CompanionFilePaths): {
         return { publicKey, keyAlgorithm: 'Ed25519' }
       } catch (error: any) {
         if (error?.code !== 'ENOENT') {
-          throw error
+          if (!isRecoverableKeyStoreError(error)) {
+            throw error
+          }
+          await fs.rm(paths.keyFile, { force: true })
+          await fs.rm(paths.secretFile, { force: true })
+          await fs.rm(paths.bindingFile, { force: true })
+          return keyStore.ensureKeyPair()
         }
+        secret = await readOrCreateSecret(paths.secretFile)
       }
 
       const { publicKey, privateKey } = generateKeyPairSync('ed25519')

@@ -179,10 +179,15 @@ export class PersistedCompanionSession {
     const userInfo = this.options.store.get(this.userInfoKey) as
       | CompanionUserInfo
       | undefined
-    const accessToken = this.options.store.get(this.accessTokenKey) as
+    const storedAccessToken = this.options.store.get(this.accessTokenKey) as
       | string
       | undefined
-    if (!userInfo || !accessToken) {
+    if (!userInfo) {
+      return
+    }
+
+    const accessToken = userInfo.accessToken || storedAccessToken
+    if (!accessToken) {
       return
     }
 

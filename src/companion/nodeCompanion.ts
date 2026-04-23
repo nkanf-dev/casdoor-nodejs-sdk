@@ -25,13 +25,19 @@ export interface NodeCompanionOptions {
 
 const maxDiscoveryBodyBytes = 4096
 
+class DiscoveryHttpError extends Error {
+  constructor(message: string, public readonly statusCode: number) {
+    super(message)
+  }
+}
+
 function readJsonBody(req: http.IncomingMessage): Promise<any> {
   return new Promise((resolve, reject) => {
     let rawBody = ''
     req.on('data', (chunk) => {
       rawBody += chunk.toString('utf8')
       if (Buffer.byteLength(rawBody, 'utf8') > maxDiscoveryBodyBytes) {
-        reject(new Error('request body too large'))
+        reject(new DiscoveryHttpError('request body too large', 413))
         req.destroy()
       }
     })
@@ -44,7 +50,7 @@ function readJsonBody(req: http.IncomingMessage): Promise<any> {
       try {
         resolve(JSON.parse(rawBody))
       } catch (error) {
-        reject(error)
+        reject(new DiscoveryHttpError('invalid JSON request body', 400))
       }
     })
     req.on('error', reject)
@@ -79,6 +85,31 @@ function resolveAllowedOrigins(
     origins.add(new URL(origin).origin)
   }
   return origins
+}
+
+function getServerPort(server: http.Server): number {
+  const address = server.address()
+  if (!address || typeof address === 'string') {
+    throw new Error('unable to resolve node companion server port')
+  }
+  return address.port
+}
+
+function listen(server: http.Server, port: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const onError = (error: Error) => {
+      server.off('listening', onListening)
+      reject(error)
+    }
+    const onListening = () => {
+      server.off('error', onError)
+      resolve(getServerPort(server))
+    }
+
+    server.once('error', onError)
+    server.once('listening', onListening)
+    server.listen(port, '127.0.0.1')
+  })
 }
 
 export class NodeCompanion {
@@ -140,8 +171,8 @@ export class NodeCompanion {
       return { port: this.port }
     }
 
-    const preferredPort = this.options.port || 47321
-    this.server = http.createServer(async (req, res) => {
+    const preferredPort = this.options.port ?? 47321
+    const server = http.createServer(async (req, res) => {
       try {
         const origin = req.headers.origin
         if (!origin || !this.allowedOrigins.has(origin)) {
@@ -192,23 +223,37 @@ export class NodeCompanion {
 
         writeJson(res, 404, { available: false })
       } catch (error: any) {
-        writeJson(res, 500, {
-          available: false,
-          msg: error?.message || 'node companion request failed',
-        })
+        this.writeRequestError(error, res)
       }
     })
 
-    await new Promise<void>((resolve, reject) => {
-      this.server!.once('error', reject)
-      this.server!.listen(preferredPort, '127.0.0.1', () => {
-        this.server!.off('error', reject)
-        resolve()
-      })
-    })
+    try {
+      this.port = await listen(server, preferredPort)
+    } catch (error: any) {
+      if (preferredPort !== 0 && error?.code === 'EADDRINUSE') {
+        this.port = await listen(server, 0)
+      } else {
+        throw error
+      }
+    }
 
-    this.port = preferredPort
-    return { port: preferredPort }
+    this.server = server
+    return { port: this.port }
+  }
+
+  private writeRequestError(error: any, res: http.ServerResponse): void {
+    if (error instanceof DiscoveryHttpError) {
+      writeJson(res, error.statusCode, {
+        available: false,
+        msg: error.message,
+      })
+      return
+    }
+
+    writeJson(res, 500, {
+      available: false,
+      msg: error?.message || 'node companion request failed',
+    })
   }
 
   private async stopLocalDiscoveryServer(): Promise<void> {

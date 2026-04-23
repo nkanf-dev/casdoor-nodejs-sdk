@@ -1,4 +1,5 @@
 import * as path from 'path'
+import { generateKeyPairSync, KeyObject, sign } from 'crypto'
 import { KeyStore, TrustedBindingRecord } from '../../companion/store'
 import {
   CompanionFilePaths,
@@ -76,21 +77,37 @@ export function createMemoryBindingStore(
 }
 
 export function createMemoryKeyStore(): KeyStore {
-  let publicKey = 'memory-public-key'
+  let keyPair = createMemoryKeyPair()
 
   return {
     async ensureKeyPair(): Promise<{
       publicKey: string
       keyAlgorithm: 'Ed25519'
     }> {
-      return { publicKey, keyAlgorithm: 'Ed25519' }
+      return { publicKey: keyPair.publicKeyPem, keyAlgorithm: 'Ed25519' }
     },
     async signChallenge(challenge: string): Promise<string> {
-      return Buffer.from(`memory:${challenge}`, 'utf8').toString('base64url')
+      const signature = sign(
+        null,
+        Buffer.from(challenge, 'utf8'),
+        keyPair.privateKey,
+      )
+      return signature.toString('base64url')
     },
     async clearKeyPair(): Promise<void> {
-      publicKey = 'memory-public-key'
+      keyPair = createMemoryKeyPair()
     },
+  }
+}
+
+function createMemoryKeyPair(): {
+  publicKeyPem: string
+  privateKey: KeyObject
+} {
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519')
+  return {
+    publicKeyPem: publicKey.export({ type: 'spki', format: 'pem' }).toString(),
+    privateKey,
   }
 }
 
