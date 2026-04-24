@@ -53,6 +53,11 @@ export interface SessionCompanionOptions {
   port?: number
   allowedOrigins?: string[]
   fetchImpl?: CompanionFetch
+  approveQuickLogin?: (input: {
+    applicationName?: string
+    userName: string
+    displayName?: string
+  }) => Promise<boolean>
 }
 
 export interface SessionCompanionRuntime {
@@ -80,6 +85,7 @@ export class SessionCompanion implements SessionCompanionRuntime {
       port: options.port,
       allowedOrigins: options.allowedOrigins,
       fetchImpl: options.fetchImpl,
+      approveQuickLogin: options.approveQuickLogin,
       getCurrentIdentity: async () => {
         if (!this.session) {
           throw new Error('companion session unavailable')

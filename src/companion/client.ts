@@ -95,7 +95,7 @@ export class CompanionClient {
     clientId: string,
   ): Promise<{ status?: string; msg?: string }> {
     return this.getFetch()(
-      `${this.options.serverUrl.trim()}/api/device-auth/discovery-token/inspect?discoveryToken=${encodeURIComponent(
+      `${this.options.serverUrl.trim()}/api/quick-login/discovery-token/inspect?discoveryToken=${encodeURIComponent(
         discoveryToken,
       )}&clientId=${encodeURIComponent(clientId)}`,
       this.getRequestOptions('POST'),

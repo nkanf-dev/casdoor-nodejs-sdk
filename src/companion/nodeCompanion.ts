@@ -16,6 +16,11 @@ export interface NodeCompanionOptions {
     displayName?: string
     avatar?: string
   }>
+  approveQuickLogin?(input: {
+    applicationName?: string
+    userName: string
+    displayName?: string
+  }): Promise<boolean>
   deviceId?: string
   deviceName?: string
   port?: number
@@ -143,6 +148,7 @@ export class NodeCompanion {
         canCompanion: true,
       }),
       getCurrentIdentity: this.options.getCurrentIdentity,
+      approveQuickLogin: this.options.approveQuickLogin,
       startLocalDiscoveryServer: async (handler) =>
         this.startLocalDiscoveryServer(handler),
       stopLocalDiscoveryServer: async () => this.stopLocalDiscoveryServer(),
@@ -216,6 +222,7 @@ export class NodeCompanion {
           const result = await currentHandler.signChallenge({
             challenge: body.challenge,
             bindingId: body.bindingId,
+            applicationName: body.applicationName,
           })
           writeJson(res, 200, result)
           return

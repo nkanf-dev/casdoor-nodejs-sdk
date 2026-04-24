@@ -16,6 +16,7 @@ export interface DiscoveryHandler {
   signChallenge(input: {
     challenge: string
     bindingId: string
+    applicationName?: string
   }): Promise<{ signature: string }>
 }
 
@@ -33,6 +34,11 @@ export interface CompanionAdapter {
     displayName?: string
     avatar?: string
   }>
+  approveQuickLogin?(input: {
+    applicationName?: string
+    userName: string
+    displayName?: string
+  }): Promise<boolean>
   startLocalDiscoveryServer(
     handler: DiscoveryHandler,
   ): Promise<{ port: number }>

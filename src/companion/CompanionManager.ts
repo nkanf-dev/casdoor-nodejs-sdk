@@ -111,9 +111,20 @@ export class CompanionManager {
       signChallenge: async (input: {
         challenge: string
         bindingId: string
+        applicationName?: string
       }): Promise<{ signature: string }> => {
         if (input.bindingId !== binding.bindingId) {
           throw new Error('binding mismatch')
+        }
+
+        const identity = await this.adapter.getCurrentIdentity()
+        const approved = await this.adapter.approveQuickLogin?.({
+          applicationName: input.applicationName,
+          userName: identity.userName,
+          displayName: identity.displayName,
+        })
+        if (!approved) {
+          throw new Error('quick login was denied')
         }
 
         return {
